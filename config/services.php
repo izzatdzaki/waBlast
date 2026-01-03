@@ -30,4 +30,9 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+    'baileys' => [
+        'api_url' => env('BAILEYS_API_URL', 'http://localhost:3000'),
+        'timeout' => env('BAILEYS_TIMEOUT', 30),
+    ],
+
 ];

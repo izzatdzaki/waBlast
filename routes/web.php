@@ -6,6 +6,7 @@ use App\Http\Controllers\DashboardPasienController;
 use App\Http\Controllers\DashboardKontrolController;
 use App\Http\Controllers\DashboardMobileBpjsController;
 use App\Http\Controllers\AttendanceTrackingController;
+use App\Http\Controllers\WhatsAppDashboardController;
 
 /*
 |--------------------------------------------------------------------------
@@ -40,4 +41,25 @@ Route::prefix('attendance')->name('attendance.')->group(function () {
     Route::get('/', [AttendanceTrackingController::class, 'index'])->name('index');
     Route::get('/export', [AttendanceTrackingController::class, 'export'])->name('export');
 });
+
+// WhatsApp Management - No auth required for testing
+Route::prefix('whatsapp')->name('whatsapp.')->group(function () {
+    Route::get('/', [WhatsAppDashboardController::class, 'index'])->name('dashboard');
+    Route::get('send', [WhatsAppDashboardController::class, 'showSendForm'])->name('send');
+    Route::post('send', [WhatsAppDashboardController::class, 'sendMessage'])->name('send.post');
+    Route::get('schedule', [WhatsAppDashboardController::class, 'showScheduleForm'])->name('schedule');
+    Route::post('schedule', [WhatsAppDashboardController::class, 'sendScheduledMessage'])->name('send-scheduled');
+    Route::get('history', [WhatsAppDashboardController::class, 'showHistory'])->name('history');
+    Route::get('templates', [WhatsAppDashboardController::class, 'showTemplates'])->name('templates');
+    Route::get('message/{message}', [WhatsAppDashboardController::class, 'showMessageDetail'])->name('detail');
+    Route::post('message/{message}/resend', [WhatsAppDashboardController::class, 'resendMessage'])->name('resend');
+    Route::get('settings', [WhatsAppDashboardController::class, 'showSettings'])->name('settings');
+    Route::post('settings', [WhatsAppDashboardController::class, 'updateSettings'])->name('settings.update');
+    Route::get('devices', [WhatsAppDashboardController::class, 'getDevices'])->name('devices');
+    Route::post('devices/qr-code', [WhatsAppDashboardController::class, 'generateQrCode'])->name('qr.generate');
+    Route::post('devices/update-status', [WhatsAppDashboardController::class, 'updateDeviceStatus'])->name('device.update-status');
+    Route::delete('devices/{device_id}', [WhatsAppDashboardController::class, 'deleteDevice'])->name('device.delete');
+    Route::post('webhook/test', [WhatsAppDashboardController::class, 'testWebhook'])->name('webhook.test');
+});
+
 
