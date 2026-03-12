@@ -146,8 +146,8 @@ async function initializeWhatsApp(sessionId) {
 
             if (connection === 'close') {
                 const shouldReconnect =
-                    lastDisconnect ? .error ? .output ? .statusCode !== DisconnectReason.loggedOut;
-                const isLoggedOut = lastDisconnect ? .error ? .output ? .statusCode === DisconnectReason.loggedOut;
+                    lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
+                const isLoggedOut = lastDisconnect?.error?.output?.statusCode === DisconnectReason.loggedOut;
 
                 console.log(`[${sessionId}] Connection closed. Reconnect: ${shouldReconnect}, LoggedOut: ${isLoggedOut}`);
                 connectionStates.delete(sessionId); // Clear state when disconnected
@@ -182,7 +182,7 @@ async function initializeWhatsApp(sessionId) {
 
         // Handle incoming messages
         sock.ev.on('messages.upsert', async(m) => {
-            console.log(`[${sessionId}] Message received from`, m.messages[0] ? .key ? .remoteJid);
+            console.log(`[${sessionId}] Message received from`, m.messages[0]?.key?.remoteJid);
         });
 
         connections.set(sessionId, sock);
@@ -254,12 +254,12 @@ app.get('/connection-status/:sessionId', async(req, res) => {
 
         res.json({
             success: true,
-            status: state ? .authenticated ? 'authenticated' : 'pending',
-            authenticated: state ? .authenticated || false,
+            status: state?.authenticated ? 'authenticated' : 'pending',
+            authenticated: state?.authenticated || false,
             hasUser: !!sock.user,
-            phone: sock.user ? .id ? .replace(/:\d+@.*/, '') || null,
-            connectedAt: state ? .timestamp,
-            isReady: state ? .authenticated && !!sock.user
+            phone: sock.user?.id?.replace(/:\d+@.*/, '') || null,
+            connectedAt: state?.timestamp,
+            isReady: state?.authenticated && !!sock.user
         });
     } catch (error) {
         res.status(500).json({
@@ -276,7 +276,7 @@ app.get('/qr', async(req, res) => {
         const sock = await getConnection(sessionId);
 
         const qrData = messageQueue.get(sessionId);
-        if (qrData ? .qr) {
+        if (qrData?.qr) {
             return res.json({
                 success: true,
                 qr: qrData.qr,
@@ -330,7 +330,7 @@ app.post('/send-message', async(req, res) => {
             const state = connectionStates.get(sessionId);
 
             // Check if truly authenticated
-            if (sock.user && state ? .authenticated) {
+            if (sock.user && state?.authenticated) {
                 connected = true;
                 console.log(`[${sessionId}] Connection verified on attempt ${attempt}`);
                 break;
@@ -342,7 +342,7 @@ app.post('/send-message', async(req, res) => {
 
                 // Force reconnect check
                 try {
-                    await sock.socket ? .emit ? .('user-present');
+                    await sock.socket?.emit?.('user-present');
                 } catch (e) {
                     // Ignore
                 }
@@ -356,7 +356,7 @@ app.post('/send-message', async(req, res) => {
                 details: {
                     sessionId,
                     hasUser: !!sock.user,
-                    isAuthenticated: connectionStates.get(sessionId) ? .authenticated || false,
+                    isAuthenticated: connectionStates.get(sessionId)?.authenticated || false,
                     status: connectionStates.get(sessionId) || 'unknown'
                 }
             });
@@ -535,7 +535,7 @@ app.get('/sessions', (req, res) => {
             const isConnected = sock.user ? true : false;
             devices.push({
                 id: sessionId,
-                phone: sock.user ? .id || null,
+                phone: sock.user?.id || null,
                 status: isConnected ? 'connected' : 'disconnected',
                 connected: isConnected,
             });
@@ -605,7 +605,7 @@ app.get('/sessions/:sessionId', async(req, res) => {
         res.json({
             success: true,
             device_id: sessionId,
-            phone: sock.user ? .id || null,
+            phone: sock.user?.id || null,
             status: isConnected ? 'connected' : 'disconnected',
             connected: isConnected,
         });
