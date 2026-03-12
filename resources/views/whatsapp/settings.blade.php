@@ -40,27 +40,27 @@
     <div class="row">
         <!-- Left Sidebar - Settings Menu -->
         <div class="col-md-3 mb-4">
-            <div class="list-group sticky-top" style="top: 20px;">
-                <button type="button" class="list-group-item list-group-item-action active" 
-                        data-bs-toggle="list" href="#connection-settings" role="tab">
+            <div class="list-group sticky-top" style="top: 20px;" role="tablist">
+                <a class="list-group-item list-group-item-action active" 
+                   data-bs-toggle="tab" href="#connection-settings" role="tab" aria-selected="true">
                     <i class="bi bi-wifi"></i> Koneksi
-                </button>
-                <button type="button" class="list-group-item list-group-item-action" 
-                        data-bs-toggle="list" href="#device-settings" role="tab">
+                </a>
+                <a class="list-group-item list-group-item-action" 
+                   data-bs-toggle="tab" href="#device-settings" role="tab" aria-selected="false">
                     <i class="bi bi-phone"></i> Perangkat
-                </button>
-                <button type="button" class="list-group-item list-group-item-action" 
-                        data-bs-toggle="list" href="#webhook-settings" role="tab">
+                </a>
+                <a class="list-group-item list-group-item-action" 
+                   data-bs-toggle="tab" href="#webhook-settings" role="tab" aria-selected="false">
                     <i class="bi bi-link-45deg"></i> Webhook
-                </button>
-                <button type="button" class="list-group-item list-group-item-action" 
-                        data-bs-toggle="list" href="#message-settings" role="tab">
+                </a>
+                <a class="list-group-item list-group-item-action" 
+                   data-bs-toggle="tab" href="#message-settings" role="tab" aria-selected="false">
                     <i class="bi bi-chat-dots"></i> Pesan
-                </button>
-                <button type="button" class="list-group-item list-group-item-action" 
-                        data-bs-toggle="list" href="#api-settings" role="tab">
+                </a>
+                <a class="list-group-item list-group-item-action" 
+                   data-bs-toggle="tab" href="#api-settings" role="tab" aria-selected="false">
                     <i class="bi bi-speedometer2"></i> API
-                </button>
+                </a>
             </div>
         </div>
 
@@ -77,11 +77,26 @@
                             <form action="{{ route('whatsapp.settings.update') }}" method="POST">
                                 @csrf
                                 
+                                {{-- Hidden fields untuk settings dari tab lain --}}
+                                <input type="hidden" name="device_check_interval" value="{{ old('device_check_interval', $device_check_interval ?? 30) }}">
+                                <input type="hidden" name="default_device_id" value="{{ old('default_device_id', $default_device_id ?? '') }}">
+                                <input type="hidden" name="webhook_url" value="{{ old('webhook_url', $webhook_url ?? '') }}">
+                                <input type="hidden" name="webhook_secret" value="{{ old('webhook_secret', $webhook_secret ?? '') }}">
+                                <input type="hidden" name="webhook_enabled" value="{{ old('webhook_enabled', $webhook_enabled ? 1 : 0) }}">
+                                <input type="hidden" name="enable_auto_reply" value="{{ old('enable_auto_reply', $enable_auto_reply ? 1 : 0) }}">
+                                <input type="hidden" name="auto_reply_message" value="{{ old('auto_reply_message', $auto_reply_message ?? '') }}">
+                                <input type="hidden" name="message_retention_days" value="{{ old('message_retention_days', $message_retention_days ?? 30) }}">
+                                <input type="hidden" name="max_message_length" value="{{ old('max_message_length', $max_message_length ?? 4096) }}">
+                                <input type="hidden" name="api_rate_limit" value="{{ old('api_rate_limit', $api_rate_limit ?? 20) }}">
+                                <input type="hidden" name="api_timeout" value="{{ old('api_timeout', $api_timeout ?? 30) }}">
+                                <input type="hidden" name="api_retry_attempts" value="{{ old('api_retry_attempts', $api_retry_attempts ?? 3) }}">
+                                <input type="hidden" name="api_retry_delay" value="{{ old('api_retry_delay', $api_retry_delay ?? 5) }}">
+                                
                                 <div class="row mb-4">
                                     <div class="col-md-6">
                                         <h6>Status Baileys Backend</h6>
                                         <div id="baileys-status" class="d-flex align-items-center">
-                                            @if ($baileys_status)
+                                            @if ($baileys_status ?? false)
                                                 <span class="badge bg-success me-2"><i class="bi bi-check-circle"></i> Online</span>
                                                 <small class="text-success">Baileys backend sedang berjalan</small>
                                             @else
@@ -95,7 +110,7 @@
                                             <label for="baileys_url" class="form-label">URL Baileys Backend</label>
                                             <input type="url" class="form-control @error('baileys_url') is-invalid @enderror" 
                                                    id="baileys_url" name="baileys_url" 
-                                                   value="{{ old('baileys_url', $baileys_url) }}"
+                                                   value="{{ old('baileys_url', $baileys_url ?? 'http://localhost:3000') }}"
                                                    placeholder="http://localhost:3000" required>
                                             @error('baileys_url')
                                                 <div class="invalid-feedback">{{ $message }}</div>
@@ -113,7 +128,7 @@
                                         <li>Navigasi ke folder <code>backend/</code></li>
                                         <li>Jalankan <code>npm install</code> (jika belum)</li>
                                         <li>Jalankan <code>npm start</code> untuk menjalankan Baileys backend</li>
-                                        <li>Backend akan tersedia di <code>{{ $baileys_url }}</code></li>
+                                        <li>Backend akan tersedia di <code>{{ $baileys_url ?? 'http://localhost:3000' }}</code></li>
                                     </ol>
                                 </div>
 
@@ -143,12 +158,26 @@
                             <form action="{{ route('whatsapp.settings.update') }}" method="POST" class="mb-4">
                                 @csrf
                                 
+                                {{-- Hidden fields untuk settings dari tab lain --}}
+                                <input type="hidden" name="baileys_url" value="{{ old('baileys_url', $baileys_url ?? 'http://localhost:3000') }}">
+                                <input type="hidden" name="webhook_url" value="{{ old('webhook_url', $webhook_url ?? '') }}">
+                                <input type="hidden" name="webhook_secret" value="{{ old('webhook_secret', $webhook_secret ?? '') }}">
+                                <input type="hidden" name="webhook_enabled" value="{{ old('webhook_enabled', $webhook_enabled ? 1 : 0) }}">
+                                <input type="hidden" name="enable_auto_reply" value="{{ old('enable_auto_reply', $enable_auto_reply ? 1 : 0) }}">
+                                <input type="hidden" name="auto_reply_message" value="{{ old('auto_reply_message', $auto_reply_message ?? '') }}">
+                                <input type="hidden" name="message_retention_days" value="{{ old('message_retention_days', $message_retention_days ?? 30) }}">
+                                <input type="hidden" name="max_message_length" value="{{ old('max_message_length', $max_message_length ?? 4096) }}">
+                                <input type="hidden" name="api_rate_limit" value="{{ old('api_rate_limit', $api_rate_limit ?? 20) }}">
+                                <input type="hidden" name="api_timeout" value="{{ old('api_timeout', $api_timeout ?? 30) }}">
+                                <input type="hidden" name="api_retry_attempts" value="{{ old('api_retry_attempts', $api_retry_attempts ?? 3) }}">
+                                <input type="hidden" name="api_retry_delay" value="{{ old('api_retry_delay', $api_retry_delay ?? 5) }}">
+                                
                                 <div class="row mb-3">
                                     <div class="col-md-6">
                                         <label for="default_device_id" class="form-label">Perangkat Default</label>
                                         <input type="text" class="form-control @error('default_device_id') is-invalid @enderror" 
                                                id="default_device_id" name="default_device_id" 
-                                               value="{{ old('default_device_id', $default_device_id) }}"
+                                               value="{{ old('default_device_id', $default_device_id ?? '') }}"
                                                placeholder="Device ID untuk perangkat default">
                                         <small class="text-muted d-block mt-2">
                                             Perangkat ini akan digunakan sebagai pengirim pesan utama
@@ -161,7 +190,7 @@
                                         <label for="device_check_interval" class="form-label">Interval Cek Perangkat (Detik)</label>
                                         <input type="number" class="form-control @error('device_check_interval') is-invalid @enderror" 
                                                id="device_check_interval" name="device_check_interval" 
-                                               value="{{ old('device_check_interval', $device_check_interval) }}"
+                                               value="{{ old('device_check_interval', $device_check_interval ?? 30) }}"
                                                min="10" max="300" required>
                                         <small class="text-muted d-block mt-2">
                                             Frekuensi sistem mengecek status perangkat
@@ -250,11 +279,24 @@
                             <form action="{{ route('whatsapp.settings.update') }}" method="POST">
                                 @csrf
 
+                                {{-- Hidden fields untuk settings dari tab lain --}}
+                                <input type="hidden" name="baileys_url" value="{{ old('baileys_url', $baileys_url ?? 'http://localhost:3000') }}">
+                                <input type="hidden" name="device_check_interval" value="{{ old('device_check_interval', $device_check_interval ?? 30) }}">
+                                <input type="hidden" name="default_device_id" value="{{ old('default_device_id', $default_device_id ?? '') }}">
+                                <input type="hidden" name="enable_auto_reply" value="{{ old('enable_auto_reply', $enable_auto_reply ? 1 : 0) }}">
+                                <input type="hidden" name="auto_reply_message" value="{{ old('auto_reply_message', $auto_reply_message ?? '') }}">
+                                <input type="hidden" name="message_retention_days" value="{{ old('message_retention_days', $message_retention_days ?? 30) }}">
+                                <input type="hidden" name="max_message_length" value="{{ old('max_message_length', $max_message_length ?? 4096) }}">
+                                <input type="hidden" name="api_rate_limit" value="{{ old('api_rate_limit', $api_rate_limit ?? 20) }}">
+                                <input type="hidden" name="api_timeout" value="{{ old('api_timeout', $api_timeout ?? 30) }}">
+                                <input type="hidden" name="api_retry_attempts" value="{{ old('api_retry_attempts', $api_retry_attempts ?? 3) }}">
+                                <input type="hidden" name="api_retry_delay" value="{{ old('api_retry_delay', $api_retry_delay ?? 5) }}">
+
                                 <div class="mb-3">
                                     <label for="webhook_url" class="form-label">URL Webhook</label>
                                     <input type="url" class="form-control @error('webhook_url') is-invalid @enderror" 
                                            id="webhook_url" name="webhook_url" 
-                                           value="{{ old('webhook_url', $webhook_url) }}"
+                                           value="{{ old('webhook_url', $webhook_url ?? '') }}"
                                            placeholder="https://example.com/webhook/whatsapp">
                                     <small class="text-muted d-block mt-2">
                                         Webhook akan mengirimkan notifikasi untuk setiap event (pesan terkirim, terbaca, gagal, dll)
@@ -268,7 +310,7 @@
                                     <div class="form-check">
                                         <input class="form-check-input" type="checkbox" id="webhook_enabled" 
                                                name="webhook_enabled" value="1"
-                                               @if($webhook_enabled) checked @endif>
+                                               @if(old('webhook_enabled', $webhook_enabled ?? false)) checked @endif>
                                         <label class="form-check-label" for="webhook_enabled">
                                             Aktifkan Webhook
                                         </label>
@@ -282,7 +324,7 @@
                                     <label for="webhook_secret" class="form-label">Secret Key (Optional)</label>
                                     <input type="text" class="form-control @error('webhook_secret') is-invalid @enderror" 
                                            id="webhook_secret" name="webhook_secret" 
-                                           value="{{ old('webhook_secret', $webhook_secret) }}"
+                                           value="{{ old('webhook_secret', $webhook_secret ?? '') }}"
                                            placeholder="Secret untuk validasi webhook">
                                     <small class="text-muted d-block mt-2">
                                         Gunakan secret untuk validasi request webhook
@@ -308,7 +350,7 @@
                                     <button type="submit" class="btn btn-info">
                                         <i class="bi bi-save"></i> Simpan Webhook
                                     </button>
-                                    @if ($webhook_url && $webhook_enabled)
+                                    @if (($webhook_url ?? '') && ($webhook_enabled ?? false))
                                         <button type="button" class="btn btn-outline-info" onclick="testWebhook()">
                                             <i class="bi bi-play-circle"></i> Test Webhook
                                         </button>
@@ -329,11 +371,23 @@
                             <form action="{{ route('whatsapp.settings.update') }}" method="POST">
                                 @csrf
 
+                                {{-- Hidden fields untuk settings dari tab lain --}}
+                                <input type="hidden" name="baileys_url" value="{{ old('baileys_url', $baileys_url ?? 'http://localhost:3000') }}">
+                                <input type="hidden" name="device_check_interval" value="{{ old('device_check_interval', $device_check_interval ?? 30) }}">
+                                <input type="hidden" name="default_device_id" value="{{ old('default_device_id', $default_device_id ?? '') }}">
+                                <input type="hidden" name="webhook_url" value="{{ old('webhook_url', $webhook_url ?? '') }}">
+                                <input type="hidden" name="webhook_secret" value="{{ old('webhook_secret', $webhook_secret ?? '') }}">
+                                <input type="hidden" name="webhook_enabled" value="{{ old('webhook_enabled', $webhook_enabled ? 1 : 0) }}">
+                                <input type="hidden" name="api_rate_limit" value="{{ old('api_rate_limit', $api_rate_limit ?? 20) }}">
+                                <input type="hidden" name="api_timeout" value="{{ old('api_timeout', $api_timeout ?? 30) }}">
+                                <input type="hidden" name="api_retry_attempts" value="{{ old('api_retry_attempts', $api_retry_attempts ?? 3) }}">
+                                <input type="hidden" name="api_retry_delay" value="{{ old('api_retry_delay', $api_retry_delay ?? 5) }}">
+
                                 <div class="mb-3">
                                     <div class="form-check">
                                         <input class="form-check-input" type="checkbox" id="enable_auto_reply" 
                                                name="enable_auto_reply" value="1"
-                                               @if($enable_auto_reply) checked @endif>
+                                               @if(old('enable_auto_reply', $enable_auto_reply ?? false)) checked @endif>
                                         <label class="form-check-label" for="enable_auto_reply">
                                             Aktifkan Balasan Otomatis
                                         </label>
@@ -347,9 +401,9 @@
                                     <label for="auto_reply_message" class="form-label">Pesan Balasan Otomatis</label>
                                     <textarea class="form-control @error('auto_reply_message') is-invalid @enderror" 
                                               id="auto_reply_message" name="auto_reply_message" rows="4"
-                                              placeholder="Terima kasih atas pesan Anda. Kami akan merespons sesegera mungkin.">{{ old('auto_reply_message', $auto_reply_message) }}</textarea>
+                                              placeholder="Terima kasih atas pesan Anda. Kami akan merespons sesegera mungkin.">{{ old('auto_reply_message', $auto_reply_message ?? 'Terima kasih atas pesan Anda. Kami akan merespons sesegera mungkin.') }}</textarea>
                                     <small class="text-muted d-block mt-2">
-                                        Maksimal {{ $max_message_length }} karakter
+                                        Maksimal {{ $max_message_length ?? 4096 }} karakter
                                     </small>
                                     @error('auto_reply_message')
                                         <div class="invalid-feedback">{{ $message }}</div>
@@ -362,7 +416,7 @@
                                             <label for="message_retention_days" class="form-label">Retensi Data Pesan (Hari)</label>
                                             <input type="number" class="form-control @error('message_retention_days') is-invalid @enderror" 
                                                    id="message_retention_days" name="message_retention_days" 
-                                                   value="{{ old('message_retention_days', $message_retention_days) }}"
+                                                   value="{{ old('message_retention_days', $message_retention_days ?? 30) }}"
                                                    min="1" max="365" required>
                                             <small class="text-muted d-block mt-2">
                                                 Sistem akan menghapus data pesan yang lebih lama dari periode ini
@@ -377,7 +431,7 @@
                                             <label for="max_message_length" class="form-label">Panjang Maksimal Pesan (Karakter)</label>
                                             <input type="number" class="form-control @error('max_message_length') is-invalid @enderror" 
                                                    id="max_message_length" name="max_message_length" 
-                                                   value="{{ old('max_message_length', $max_message_length) }}"
+                                                   value="{{ old('max_message_length', $max_message_length ?? 4096) }}"
                                                    min="100" max="4096" required>
                                             <small class="text-muted d-block mt-2">
                                                 Batas karakter maksimal untuk setiap pesan
@@ -407,13 +461,25 @@
                             <form action="{{ route('whatsapp.settings.update') }}" method="POST">
                                 @csrf
 
+                                {{-- Hidden fields untuk settings dari tab lain --}}
+                                <input type="hidden" name="baileys_url" value="{{ old('baileys_url', $baileys_url ?? 'http://localhost:3000') }}">
+                                <input type="hidden" name="device_check_interval" value="{{ old('device_check_interval', $device_check_interval ?? 30) }}">
+                                <input type="hidden" name="default_device_id" value="{{ old('default_device_id', $default_device_id ?? '') }}">
+                                <input type="hidden" name="webhook_url" value="{{ old('webhook_url', $webhook_url ?? '') }}">
+                                <input type="hidden" name="webhook_secret" value="{{ old('webhook_secret', $webhook_secret ?? '') }}">
+                                <input type="hidden" name="webhook_enabled" value="{{ old('webhook_enabled', $webhook_enabled ? 1 : 0) }}">
+                                <input type="hidden" name="enable_auto_reply" value="{{ old('enable_auto_reply', $enable_auto_reply ? 1 : 0) }}">
+                                <input type="hidden" name="auto_reply_message" value="{{ old('auto_reply_message', $auto_reply_message ?? 'Terima kasih atas pesan Anda.') }}">
+                                <input type="hidden" name="message_retention_days" value="{{ old('message_retention_days', $message_retention_days ?? 30) }}">
+                                <input type="hidden" name="max_message_length" value="{{ old('max_message_length', $max_message_length ?? 4096) }}">
+
                                 <div class="row">
                                     <div class="col-md-6">
                                         <div class="mb-3">
                                             <label for="api_rate_limit" class="form-label">Rate Limit (Pesan/Menit)</label>
                                             <input type="number" class="form-control @error('api_rate_limit') is-invalid @enderror" 
                                                    id="api_rate_limit" name="api_rate_limit" 
-                                                   value="{{ old('api_rate_limit', $api_rate_limit) }}"
+                                                   value="{{ old('api_rate_limit', $api_rate_limit ?? 20) }}"
                                                    min="1" max="100" required>
                                             <small class="text-muted d-block mt-2">
                                                 Maksimal pesan yang dapat dikirim per menit
@@ -429,7 +495,7 @@
                                             <label for="api_timeout" class="form-label">Timeout (Detik)</label>
                                             <input type="number" class="form-control @error('api_timeout') is-invalid @enderror" 
                                                    id="api_timeout" name="api_timeout" 
-                                                   value="{{ old('api_timeout', $api_timeout) }}"
+                                                   value="{{ old('api_timeout', $api_timeout ?? 30) }}"
                                                    min="5" max="300" required>
                                             <small class="text-muted d-block mt-2">
                                                 Waktu tunggu maksimal untuk API request
@@ -447,7 +513,7 @@
                                             <label for="api_retry_attempts" class="form-label">Jumlah Percobaan Ulang</label>
                                             <input type="number" class="form-control @error('api_retry_attempts') is-invalid @enderror" 
                                                    id="api_retry_attempts" name="api_retry_attempts" 
-                                                   value="{{ old('api_retry_attempts', $api_retry_attempts) }}"
+                                                   value="{{ old('api_retry_attempts', $api_retry_attempts ?? 3) }}"
                                                    min="1" max="10" required>
                                             <small class="text-muted d-block mt-2">
                                                 Berapa kali sistem mencoba ulang jika request gagal
@@ -463,7 +529,7 @@
                                             <label for="api_retry_delay" class="form-label">Delay Ulang (Detik)</label>
                                             <input type="number" class="form-control @error('api_retry_delay') is-invalid @enderror" 
                                                    id="api_retry_delay" name="api_retry_delay" 
-                                                   value="{{ old('api_retry_delay', $api_retry_delay) }}"
+                                                   value="{{ old('api_retry_delay', $api_retry_delay ?? 5) }}"
                                                    min="1" max="60" required>
                                             <small class="text-muted d-block mt-2">
                                                 Waktu tunggu sebelum mencoba ulang
@@ -582,15 +648,15 @@ let qrPollingAttempts = 0;
 function checkDeviceStatus(deviceId) {
     if (!deviceId) return;
     
-    // Check via backend connection-status endpoint
-    const baileysUrl = '{{ $baileys_url }}' || 'http://localhost:3000';
+    // Check via Laravel endpoint (which queries Baileys backend)
+    const laravelEndpoint = '{{ route("whatsapp.device.connection-status", ":device") }}'.replace(':device', deviceId);
     
-    fetch(`${baileysUrl}/connection-status/${deviceId}`)
+    fetch(laravelEndpoint)
         .then(response => response.json())
         .then(data => {
             console.log('Device status check:', deviceId, data);
             
-            if (data.success && data.authenticated && data.isReady) {
+            if (data.success && data.authenticated && data.ready) {
                 // Device is fully authenticated and ready!
                 console.log('✅ Device is ready!', deviceId);
                 
@@ -841,17 +907,18 @@ function refreshDevices() {
 
 // Check Device Connection Status (Manual)
 function checkDeviceConnectionStatus(deviceName) {
-    const baileysUrl = '{{ $baileys_url }}' || 'http://localhost:3000';
-    
     // Show loading notification
     showNotification(`Mengecek status ${deviceName}...`, 'info');
     
-    fetch(`${baileysUrl}/connection-status/${deviceName}`)
+    // Use Laravel endpoint to check connection status
+    const laravelEndpoint = '{{ route("whatsapp.device.connection-status", ":device") }}'.replace(':device', deviceName);
+    
+    fetch(laravelEndpoint)
         .then(response => response.json())
         .then(data => {
             console.log('Connection status:', data);
             
-            if (data.success && data.authenticated && data.isReady) {
+            if (data.success && data.authenticated && data.ready) {
                 showNotification(`✅ ${deviceName} Terhubung! Phone: ${data.phone}`, 'success');
                 
                 // Update device status in database
@@ -859,10 +926,10 @@ function checkDeviceConnectionStatus(deviceName) {
             } else if (data.authenticated) {
                 showNotification(`✓ ${deviceName} Authenticated tapi belum siap (${data.status})`, 'warning');
             } else {
-                showNotification(`⏳ ${deviceName} Belum ter-authenticate atau sudah disconnect`, 'warning');
+                showNotification(`⏳ ${deviceName} Belum ter-authenticate atau sedang connecting`, 'warning');
                 
-                // Update status to disconnected in database
-                updateDeviceStatusFromCheck(deviceName, 'disconnected', null);
+                // Update status to connecting/disconnected
+                updateDeviceStatusFromCheck(deviceName, 'connecting', null);
             }
             
             // Refresh devices list after 2 seconds

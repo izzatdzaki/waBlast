@@ -188,12 +188,26 @@
                         <label class="form-label">Pesan</label>
                         <textarea class="form-control" id="pesan" rows="4" placeholder="Ketik pesan reminder...">Salam Hormat, kami ingin mengingatkan jadwal kontrol Anda. Pastikan hadir tepat waktu. Terima kasih.</textarea>
                     </div>
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="kirimSekarang">
+                            <label class="form-check-label" for="kirimSekarang">
+                                Kirim Sekarang (tanpa jadwal)
+                            </label>
+                        </div>
+                    </div>
                     <div class="alert alert-info" role="alert">
                         <i class="bi bi-info-circle"></i> Pesan akan dikirim ke WhatsApp pasien sesuai jadwal yang ditentukan
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                    <button type="button" class="btn btn-success" id="btnKirimSekarang">
+                        <i class="bi bi-send"></i> Kirim Sekarang
+                    </button>
+                    <button type="button" class="btn btn-warning" id="btnJadwalkanBesok">
+                        <i class="bi bi-calendar"></i> Jadwalkan Besok
+                    </button>
                     <button type="submit" class="btn btn-primary">
                         <i class="bi bi-send"></i> <span id="btnText">Jadwalkan Pengiriman</span>
                     </button>
@@ -225,7 +239,87 @@
 
         // Update form action
         document.getElementById('sendWAForm').action = '/dashboard/kontrol/' + nomorSurat + '/send-reminder';
+        
+        // Store nomor surat for later use
+        document.getElementById('sendWAForm').dataset.nomorSurat = nomorSurat;
+        
+        // Uncheck "Kirim Sekarang"
+        document.getElementById('kirimSekarang').checked = false;
     });
+
+    // Handle "Kirim Sekarang" button
+    document.getElementById('btnKirimSekarang').addEventListener('click', function() {
+        const pesan = document.getElementById('pesan').value;
+        
+        if (!pesan.trim()) {
+            alert('Mohon isi pesan');
+            return;
+        }
+        
+        const form = document.getElementById('sendWAForm');
+        const nomorSurat = form.dataset.nomorSurat;
+        
+        // Send immediately
+        const now = new Date();
+        const date = now.toISOString().split('T')[0];
+        const time = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
+        
+        submitForm(form, date, time, pesan, nomorSurat);
+    });
+
+    // Handle "Jadwalkan Besok" button
+    document.getElementById('btnJadwalkanBesok').addEventListener('click', function() {
+        const pesan = document.getElementById('pesan').value;
+        
+        if (!pesan.trim()) {
+            alert('Mohon isi pesan');
+            return;
+        }
+        
+        const form = document.getElementById('sendWAForm');
+        const nomorSurat = form.dataset.nomorSurat;
+        
+        // Schedule for tomorrow at 08:00
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const date = tomorrow.toISOString().split('T')[0];
+        const time = '08:00';
+        
+        submitForm(form, date, time, pesan, nomorSurat);
+    });
+
+    // Helper function to submit form
+    function submitForm(form, date, time, pesan, nomorSurat) {
+        // Remove existing hidden fields if any
+        let existingDate = form.querySelector('input[name="schedule_date"]');
+        let existingTime = form.querySelector('input[name="schedule_time"]');
+        let existingPesan = form.querySelector('input[name="pesan"]');
+        if (existingDate) existingDate.remove();
+        if (existingTime) existingTime.remove();
+        if (existingPesan) existingPesan.remove();
+        
+        // Add new hidden fields
+        let inputDate = document.createElement('input');
+        inputDate.type = 'hidden';
+        inputDate.name = 'schedule_date';
+        inputDate.value = date;
+        form.appendChild(inputDate);
+        
+        let inputTime = document.createElement('input');
+        inputTime.type = 'hidden';
+        inputTime.name = 'schedule_time';
+        inputTime.value = time;
+        form.appendChild(inputTime);
+        
+        let inputPesan = document.createElement('input');
+        inputPesan.type = 'hidden';
+        inputPesan.name = 'pesan';
+        inputPesan.value = pesan;
+        form.appendChild(inputPesan);
+        
+        // Submit form
+        form.submit();
+    }
 
     // Handle form submission with validation
     document.getElementById('sendWAForm').addEventListener('submit', function(e) {
@@ -245,36 +339,7 @@
             return;
         }
         
-        // Add hidden fields for date and time
-        let form = this;
-        
-        // Remove existing hidden fields if any
-        let existingDate = form.querySelector('input[name="schedule_date"]');
-        let existingTime = form.querySelector('input[name="schedule_time"]');
-        if (existingDate) existingDate.remove();
-        if (existingTime) existingTime.remove();
-        
-        // Add new hidden fields
-        let inputDate = document.createElement('input');
-        inputDate.type = 'hidden';
-        inputDate.name = 'schedule_date';
-        inputDate.value = tanggal;
-        form.appendChild(inputDate);
-        
-        let inputTime = document.createElement('input');
-        inputTime.type = 'hidden';
-        inputTime.name = 'schedule_time';
-        inputTime.value = jam;
-        form.appendChild(inputTime);
-        
-        let inputPesan = document.createElement('input');
-        inputPesan.type = 'hidden';
-        inputPesan.name = 'pesan';
-        inputPesan.value = pesan;
-        form.appendChild(inputPesan);
-        
-        // Submit form
-        form.submit();
+        submitForm(this, tanggal, jam, pesan);
     });
 </script>
 @endsection

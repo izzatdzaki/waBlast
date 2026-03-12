@@ -355,6 +355,12 @@
                     </li>
 
                     <li class="nav-item">
+                        <a class="nav-link @if(Route::currentRouteName() == 'dashboard.tindakan.index') active @endif" href="{{ route('dashboard.tindakan.index') }}">
+                            <i class="bi bi-bandaid"></i> Tindakan
+                        </a>
+                    </li>
+
+                    <li class="nav-item">
                         <a class="nav-link @if(Route::currentRouteName() == 'dashboard.mobile_bpjs.index') active @endif" href="{{ route('dashboard.mobile_bpjs.index') }}">
                             <i class="bi bi-phone"></i> Mobile BPJS
                         </a>

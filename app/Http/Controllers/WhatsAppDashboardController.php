@@ -471,12 +471,55 @@ class WhatsAppDashboardController extends Controller
     }
 
     /**
-     * Get Baileys devices/sessions
+     * Get Baileys devices/sessions - untuk settings page tampilkan semua
      */
     public function getDevices()
     {
         try {
-            // Only return devices that are truly active (not connecting/disconnected)
+            // Return ALL devices (active, connecting, disconnected) untuk settings page
+            $devices = WhatsAppDevice::select('id', 'device_name', 'phone_number', 'status')
+                ->orderBy('created_at', 'desc')
+                ->get()
+                ->map(function ($device) {
+                    return [
+                        'id' => $device->id,
+                        'device_id' => $device->id,
+                        'device_name' => $device->device_name,
+                        'phone_number' => $device->phone_number,
+                        'phone' => $device->phone_number,
+                        'status' => $device->status,
+                        'status_label' => $device->getStatusLabel(),
+                        'connected' => $device->status === 'active',
+                        'ready' => $device->status === 'active',
+                    ];
+                });
+
+            \Log::info('Get Devices - Total: ' . $devices->count());
+
+            return response()->json([
+                'success' => true,
+                'devices' => $devices,
+                'data' => $devices, // Alternate key for compatibility
+                'total' => $devices->count(),
+                'ready_count' => $devices->where('ready', true)->count(),
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Get Devices Error', ['error' => $e->getMessage()]);
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage(),
+                'devices' => [],
+                'data' => [],
+            ], 500);
+        }
+    }
+    
+    /**
+     * Get active devices only - untuk send message (private use)
+     */
+    public function getActiveDevices()
+    {
+        try {
             $devices = WhatsAppDevice::where('status', 'active')
                 ->select('id', 'device_name', 'phone_number', 'status')
                 ->get()
@@ -486,14 +529,9 @@ class WhatsAppDashboardController extends Controller
                         'device_name' => $device->device_name,
                         'phone_number' => $device->phone_number,
                         'status' => $device->status,
-                        'status_label' => $device->getStatusLabel(),
-                        'ready' => true, // Only active devices in this query
+                        'ready' => true,
                     ];
                 });
-
-            if ($devices->isEmpty()) {
-                \Log::warning('No active devices found for sending');
-            }
 
             return response()->json([
                 'success' => true,
@@ -501,7 +539,7 @@ class WhatsAppDashboardController extends Controller
                 'ready_count' => $devices->count(),
             ]);
         } catch (\Exception $e) {
-            \Log::error('Get Devices Error', ['error' => $e->getMessage()]);
+            \Log::error('Get Active Devices Error', ['error' => $e->getMessage()]);
             return response()->json([
                 'success' => false,
                 'error' => $e->getMessage(),
@@ -607,12 +645,31 @@ class WhatsAppDashboardController extends Controller
                     ],
                 ], 500);
             }
+            
+            // STEP 3: Create device record in database with status 'connecting'
+            $deviceName = $request->input('device_name', 'Default Device');
+            $device = WhatsAppDevice::firstOrCreate(
+                ['device_name' => $sessionId],
+                [
+                    'device_id' => $sessionId,
+                    'device_name' => $deviceName,
+                    'status' => 'connecting',
+                    'phone_number' => '',  // Empty string, will be filled after QR scan
+                ]
+            );
+            
+            \Log::info('Device created for QR scanning', [
+                'session_id' => $sessionId,
+                'device_id' => $device->id,
+                'device_name' => $deviceName,
+            ]);
 
             return response()->json([
                 'success' => true,
                 'data' => [
                     'qr' => $qrCode,
                     'device_id' => $sessionId,
+                    'db_device_id' => $device->id,
                 ],
             ]);
         } catch (\Exception $e) {
@@ -687,6 +744,82 @@ class WhatsAppDashboardController extends Controller
     }
 
     /**
+     * Check device connection status from Baileys backend
+     */
+    public function checkDeviceConnectionStatus($device_name)
+    {
+        try {
+            $settings = WhatsAppSettings::getSettings();
+            $baileysUrl = $settings->baileys_url ?? config('services.baileys.api_url', 'http://localhost:3000');
+            
+            // Check status via Baileys connection-status endpoint
+            $response = Http::timeout(10)->get($baileysUrl . '/connection-status/' . $device_name);
+            
+            $data = $response->json();
+            
+            \Log::info('Device connection status check', [
+                'device_name' => $device_name,
+                'baileys_response' => $data,
+            ]);
+            
+            // If device is authenticated and ready
+            if ($data['authenticated'] ?? false && $data['ready'] ?? false) {
+                // Update device status in database
+                $phone = $data['phone'] ?? $data['phoneNumber'] ?? '';
+                
+                WhatsAppDevice::where('device_name', $device_name)->update([
+                    'status' => 'active',
+                    'phone_number' => $phone ?: '',  // Fill phone number if available
+                    'last_connected_at' => now(),
+                ]);
+                
+                \Log::info('Device marked as active', [
+                    'device_name' => $device_name,
+                    'phone' => $phone,
+                ]);
+                
+                return response()->json([
+                    'success' => true,
+                    'authenticated' => true,
+                    'ready' => true,
+                    'phone' => $phone,
+                    'status' => 'active',
+                    'message' => 'Device terhubung',
+                ]);
+            } else if ($data['authenticated'] ?? false) {
+                return response()->json([
+                    'success' => true,
+                    'authenticated' => true,
+                    'ready' => false,
+                    'status' => $data['status'] ?? 'connecting',
+                    'message' => 'Device sedang siap (belum fully ready)',
+                ]);
+            } else {
+                return response()->json([
+                    'success' => true,
+                    'authenticated' => false,
+                    'ready' => false,
+                    'status' => 'connecting',
+                    'message' => 'Device belum ter-authenticate',
+                ]);
+            }
+        } catch (\Exception $e) {
+            \Log::warning('Check device connection error', [
+                'device_name' => $device_name,
+                'error' => $e->getMessage(),
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'authenticated' => false,
+                'ready' => false,
+                'error' => $e->getMessage(),
+                'message' => 'Gagal check status device',
+            ], 500);
+        }
+    }
+
+    /**
      * Webhook for device status updates from backend
      */
     public function handleDeviceWebhook(Request $request)
@@ -711,7 +844,7 @@ class WhatsAppDashboardController extends Controller
                 if (!$device) {
                     \DB::table('whatsapp_devices')->insert([
                         'device_name' => $device_id,
-                        'phone_number' => $data['phone_number'] ?? null,
+                        'phone_number' => $data['phone_number'] ?? '',
                         'status' => 'active', // Webhook says device is truly authenticated
                         'device_info' => json_encode($data),
                         'last_connected_at' => now(),
@@ -741,7 +874,7 @@ class WhatsAppDashboardController extends Controller
                 if (!$device) {
                     \DB::table('whatsapp_devices')->insert([
                         'device_name' => $device_id,
-                        'phone_number' => null,
+                        'phone_number' => '',  // Empty string, will be filled after QR scan
                         'status' => 'connecting',
                         'device_info' => json_encode($data),
                         'created_at' => now(),
@@ -795,34 +928,43 @@ class WhatsAppDashboardController extends Controller
                 ], 422);
             }
 
+            // Try to find device, otherwise CREATE it
             $device = WhatsAppDevice::where('device_name', $device_name)->first();
 
             if (!$device) {
-                return response()->json([
-                    'success' => false,
-                    'error' => 'Device tidak ditemukan',
-                ], 404);
+                // CREATE new device if not exists
+                $device = WhatsAppDevice::create([
+                    'device_id' => $device_name,
+                    'device_name' => $device_name,
+                    'status' => $status,
+                    'phone_number' => $phone_number ?? '',  // Default to empty string if null
+                ]);
+                
+                \Log::info("Device created via status update: {$device_name}", [
+                    'phone' => $phone_number,
+                    'status' => $status,
+                ]);
+            } else {
+                // Update status
+                $device->status = $status;
+                
+                // Update phone number jika diberikan
+                if ($phone_number) {
+                    $device->phone_number = $phone_number;
+                }
+                
+                // Update last_connected_at jika status active
+                if ($status === 'active') {
+                    $device->last_connected_at = now();
+                }
+                
+                $device->save();
+                
+                \Log::info("Device status updated: {$device_name} -> {$status}", [
+                    'phone' => $phone_number,
+                    'device_id' => $device->id
+                ]);
             }
-
-            // Update status
-            $device->status = $status;
-            
-            // Update phone number jika diberikan
-            if ($phone_number) {
-                $device->phone_number = $phone_number;
-            }
-            
-            // Update last_connected_at jika status active
-            if ($status === 'active') {
-                $device->last_connected_at = now();
-            }
-            
-            $device->save();
-
-            \Log::info("Device status updated: {$device_name} -> {$status}", [
-                'phone' => $phone_number,
-                'device_id' => $device->id
-            ]);
 
             return response()->json([
                 'success' => true,

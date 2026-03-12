@@ -56,7 +56,7 @@ async function initializeWhatsApp(sessionId) {
         sock.ev.on('creds.update', saveCreds);
 
         // Handle connection updates
-        sock.ev.on('connection.update', async (update) => {
+        sock.ev.on('connection.update', async(update) => {
             const { connection, lastDisconnect, qr } = update;
 
             if (qr) {
@@ -64,7 +64,7 @@ async function initializeWhatsApp(sessionId) {
                 console.log(`[${sessionId}] QR Code generated (${qrDataUrl.length} bytes)`);
                 // Store QR code with timestamp
                 connections.set(sessionId + '_qr_pending', true);
-                messageQueue.set(sessionId, { 
+                messageQueue.set(sessionId, {
                     qr: qrDataUrl,
                     timestamp: Date.now()
                 });
@@ -72,7 +72,8 @@ async function initializeWhatsApp(sessionId) {
                 // Send webhook for QR event
                 try {
                     console.log(`[${sessionId}] Sending QR webhook to Laravel`);
-                    await fetch('http://127.0.0.1:8000/api/whatsapp/webhook/device', {
+                    const webhookUrl = `${process.env.LARAVEL_SERVER_URL || 'http://wablast.test:88'}/api/whatsapp/webhook/device`;
+                    await fetch(webhookUrl, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
@@ -93,21 +94,22 @@ async function initializeWhatsApp(sessionId) {
                 console.log(`[${sessionId}] Connection opened`);
                 messageQueue.delete(sessionId);
                 connections.delete(sessionId + '_qr_pending');
-                
+
                 const phoneNumber = sock.user?.id?.replace(/:\d+@.*/, '') || '';
-                connectionStates.set(sessionId, { 
-                    connected: true, 
-                    authenticated: true, 
+                connectionStates.set(sessionId, {
+                    connected: true,
+                    authenticated: true,
                     timestamp: Date.now(),
                     phone: phoneNumber
                 });
 
                 // Send webhook to Laravel when device is ready - with retry
-                const sendDeviceReadyWebhook = async (retries = 0) => {
+                const sendDeviceReadyWebhook = async(retries = 0) => {
                     try {
                         console.log(`[${sessionId}] Sending device_ready webhook to Laravel - Phone: ${phoneNumber} (attempt ${retries + 1})`);
-                        
-                        const response = await fetch('http://127.0.0.1:8000/api/whatsapp/webhook/device', {
+                        const webhookUrl = `${process.env.LARAVEL_SERVER_URL || 'http://wablast.test:88'}/api/whatsapp/webhook/device`;
+
+                        const response = await fetch(webhookUrl, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({
@@ -128,7 +130,7 @@ async function initializeWhatsApp(sessionId) {
                         console.log(`[${sessionId}] Webhook sent successfully:`, data);
                     } catch (err) {
                         console.error(`[${sessionId}] Webhook error (attempt ${retries + 1}):`, err.message);
-                        
+
                         // Retry up to 3 times with delay
                         if (retries < 3) {
                             setTimeout(() => {
@@ -143,10 +145,10 @@ async function initializeWhatsApp(sessionId) {
             }
 
             if (connection === 'close') {
-                const shouldReconnect = 
-                    lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
-                const isLoggedOut = lastDisconnect?.error?.output?.statusCode === DisconnectReason.loggedOut;
-                
+                const shouldReconnect =
+                    lastDisconnect ?.error ?.output ?.statusCode !== DisconnectReason.loggedOut;
+                const isLoggedOut = lastDisconnect ?.error ?.output ?.statusCode === DisconnectReason.loggedOut;
+
                 console.log(`[${sessionId}] Connection closed. Reconnect: ${shouldReconnect}, LoggedOut: ${isLoggedOut}`);
                 connectionStates.delete(sessionId); // Clear state when disconnected
                 messageQueue.delete(sessionId); // Clear message queue
@@ -155,7 +157,8 @@ async function initializeWhatsApp(sessionId) {
                 // Send webhook for disconnect
                 try {
                     console.log(`[${sessionId}] Sending connection_closed webhook to Laravel`);
-                    await fetch('http://127.0.0.1:8000/api/whatsapp/webhook/device', {
+                    const webhookUrl = `${process.env.LARAVEL_SERVER_URL || 'http://wablast.test:88'}/api/whatsapp/webhook/device`;
+                    await fetch(webhookUrl, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
@@ -178,8 +181,8 @@ async function initializeWhatsApp(sessionId) {
         });
 
         // Handle incoming messages
-        sock.ev.on('messages.upsert', async (m) => {
-            console.log(`[${sessionId}] Message received from`, m.messages[0]?.key?.remoteJid);
+        sock.ev.on('messages.upsert', async(m) => {
+            console.log(`[${sessionId}] Message received from`, m.messages[0] ?.key ?.remoteJid);
         });
 
         connections.set(sessionId, sock);
@@ -235,7 +238,7 @@ app.get('/health', (req, res) => {
 });
 
 // Check connection status for a session
-app.get('/connection-status/:sessionId', async (req, res) => {
+app.get('/connection-status/:sessionId', async(req, res) => {
     try {
         const { sessionId } = req.params;
         const sock = connections.get(sessionId);
@@ -251,12 +254,12 @@ app.get('/connection-status/:sessionId', async (req, res) => {
 
         res.json({
             success: true,
-            status: state?.authenticated ? 'authenticated' : 'pending',
-            authenticated: state?.authenticated || false,
+            status: state ?.authenticated ? 'authenticated' : 'pending',
+            authenticated: state ?.authenticated || false,
             hasUser: !!sock.user,
-            phone: sock.user?.id?.replace(/:\d+@.*/, '') || null,
-            connectedAt: state?.timestamp,
-            isReady: state?.authenticated && !!sock.user
+            phone: sock.user ?.id ?.replace(/:\d+@.*/, '') || null,
+            connectedAt: state ?.timestamp,
+            isReady: state ?.authenticated && !!sock.user
         });
     } catch (error) {
         res.status(500).json({
@@ -267,13 +270,13 @@ app.get('/connection-status/:sessionId', async (req, res) => {
 });
 
 // Get QR code
-app.get('/qr', async (req, res) => {
+app.get('/qr', async(req, res) => {
     try {
         const sessionId = req.query.sessionId || 'default';
         const sock = await getConnection(sessionId);
 
         const qrData = messageQueue.get(sessionId);
-        if (qrData?.qr) {
+        if (qrData ?.qr) {
             return res.json({
                 success: true,
                 qr: qrData.qr,
@@ -306,7 +309,7 @@ app.get('/qr', async (req, res) => {
 });
 
 // Send message with retry logic
-app.post('/send-message', async (req, res) => {
+app.post('/send-message', async(req, res) => {
     try {
         const { phone, message, sessionId = 'default', metadata = {} } = req.body;
 
@@ -318,28 +321,28 @@ app.post('/send-message', async (req, res) => {
         }
 
         const sock = await getConnection(sessionId);
-        
+
         // Check connection with retry logic
         const maxRetries = 5;
         let connected = false;
-        
+
         for (let attempt = 1; attempt <= maxRetries; attempt++) {
             const state = connectionStates.get(sessionId);
-            
+
             // Check if truly authenticated
-            if (sock.user && state?.authenticated) {
+            if (sock.user && state ?.authenticated) {
                 connected = true;
                 console.log(`[${sessionId}] Connection verified on attempt ${attempt}`);
                 break;
             }
-            
+
             if (attempt < maxRetries) {
                 console.log(`[${sessionId}] Waiting for connection ready... (attempt ${attempt}/${maxRetries})`);
                 await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
-                
+
                 // Force reconnect check
                 try {
-                    await sock.socket?.emit?.('user-present');
+                    await sock.socket ?.emit ?.('user-present');
                 } catch (e) {
                     // Ignore
                 }
@@ -353,7 +356,7 @@ app.post('/send-message', async (req, res) => {
                 details: {
                     sessionId,
                     hasUser: !!sock.user,
-                    isAuthenticated: connectionStates.get(sessionId)?.authenticated || false,
+                    isAuthenticated: connectionStates.get(sessionId) ?.authenticated || false,
                     status: connectionStates.get(sessionId) || 'unknown'
                 }
             });
@@ -391,7 +394,7 @@ app.post('/send-message', async (req, res) => {
 });
 
 // Send scheduled message (simulated - Laravel will handle actual scheduling)
-app.post('/send-scheduled', async (req, res) => {
+app.post('/send-scheduled', async(req, res) => {
     try {
         const { phone, message, scheduled_at, sessionId = 'default', metadata = {} } = req.body;
 
@@ -468,7 +471,7 @@ app.get('/messages', (req, res) => {
 });
 
 // Get session info
-app.get('/session-info', async (req, res) => {
+app.get('/session-info', async(req, res) => {
     try {
         const sessionId = req.query.sessionId || 'default';
         const sock = await getConnection(sessionId);
@@ -499,7 +502,7 @@ app.get('/session-info', async (req, res) => {
 });
 
 // Disconnect session
-app.post('/disconnect', async (req, res) => {
+app.post('/disconnect', async(req, res) => {
     try {
         const sessionId = req.body.sessionId || 'default';
         const sock = connections.get(sessionId);
@@ -532,7 +535,7 @@ app.get('/sessions', (req, res) => {
             const isConnected = sock.user ? true : false;
             devices.push({
                 id: sessionId,
-                phone: sock.user?.id || null,
+                phone: sock.user ?.id || null,
                 status: isConnected ? 'connected' : 'disconnected',
                 connected: isConnected,
             });
@@ -552,10 +555,10 @@ app.get('/sessions', (req, res) => {
 });
 
 // Create new session for QR code
-app.post('/sessions/new', async (req, res) => {
+app.post('/sessions/new', async(req, res) => {
     try {
         const device_id = req.body.device_id || 'device_' + Date.now();
-        
+
         // Check if session already exists
         if (connections.has(device_id)) {
             return res.json({
@@ -585,7 +588,7 @@ app.post('/sessions/new', async (req, res) => {
 });
 
 // Get session status
-app.get('/sessions/:sessionId', async (req, res) => {
+app.get('/sessions/:sessionId', async(req, res) => {
     try {
         const { sessionId } = req.params;
         const sock = connections.get(sessionId);
@@ -598,11 +601,11 @@ app.get('/sessions/:sessionId', async (req, res) => {
         }
 
         const isConnected = sock.user ? true : false;
-        
+
         res.json({
             success: true,
             device_id: sessionId,
-            phone: sock.user?.id || null,
+            phone: sock.user ?.id || null,
             status: isConnected ? 'connected' : 'disconnected',
             connected: isConnected,
         });

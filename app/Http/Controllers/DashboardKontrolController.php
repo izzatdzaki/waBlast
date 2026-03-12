@@ -89,18 +89,50 @@ class DashboardKontrolController extends Controller
 
         // Combine date and time
         $scheduledDateTime = $request->schedule_date . ' ' . $request->schedule_time;
+        
+        // Check if this is immediate send (now)
+        $now = \Carbon\Carbon::now();
+        $scheduledTime = \Carbon\Carbon::createFromFormat('Y-m-d H:i', $scheduledDateTime);
+        $isImmediate = $now->diffInMinutes($scheduledTime) <= 1;
 
         // Create blast message record
-        \App\Models\BlastMessage::create([
+        $blastMessage = \App\Models\BlastMessage::create([
             'no_surat' => $no_surat,
             'no_rkm_medis' => $regPeriksa ? $regPeriksa->no_rkm_medis : null,
             'no_tlp' => $pasien ? $pasien->no_tlp : null,
             'pesan' => $request->pesan,
-            'scheduled_at' => $scheduledDateTime,
-            'status' => 'scheduled',
+            'scheduled_at' => $isImmediate ? null : $scheduledDateTime,
+            'status' => $isImmediate ? 'pending' : 'scheduled',
         ]);
+        
+        // If immediate, send now
+        if ($isImmediate && $pasien) {
+            try {
+                $whatsappService = new \App\Services\WhatsAppService();
+                $result = $whatsappService->sendMessage(
+                    $pasien->no_tlp,
+                    $request->pesan
+                );
+                
+                if ($result['success']) {
+                    $blastMessage->update([
+                        'status' => 'sent',
+                        'sent_at' => now(),
+                    ]);
+                    $message = 'Pesan reminder berhasil dikirim langsung ke pasien';
+                } else {
+                    $blastMessage->update(['status' => 'failed']);
+                    $message = 'Gagal mengirim pesan reminder: ' . ($result['message'] ?? 'Unknown error');
+                }
+            } catch (\Exception $e) {
+                $blastMessage->update(['status' => 'failed']);
+                $message = 'Error mengirim pesan: ' . $e->getMessage();
+            }
+        } else {
+            $message = 'Pesan reminder dijadwalkan berhasil dikirim pada ' . $scheduledDateTime;
+        }
 
         return redirect()->route('dashboard.kontrol.index')
-                        ->with('success', 'Pesan reminder dijadwalkan berhasil dikirim pada ' . $scheduledDateTime);
+                        ->with('success', $message);
     }
 }
