@@ -95,7 +95,7 @@ async function initializeWhatsApp(sessionId) {
                 messageQueue.delete(sessionId);
                 connections.delete(sessionId + '_qr_pending');
 
-                const phoneNumber = sock.user ? .id ? .replace(/:\d+@.*/, '') || '';
+                const phoneNumber = sock.user?.id?.replace(/:\d+@.*/, '') || '';
                 connectionStates.set(sessionId, {
                     connected: true,
                     authenticated: true,
