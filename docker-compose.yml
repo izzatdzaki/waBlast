@@ -1,0 +1,170 @@
+version: '3.8'
+
+services:
+  # MySQL Database
+  mysql:
+    image: mysql:8.0
+    container_name: wablast_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root}
+      MYSQL_DATABASE: ${DB_DATABASE:-sikmasyita}
+      MYSQL_USER: ${DB_USERNAME:-client}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-Masyita@123}
+      MYSQL_ALLOW_EMPTY_PASSWORD: "no"
+    ports:
+      - "${DB_PORT:-3306}:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./docker/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - wablast_network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
+  # PHP-FPM Service
+  laravel:
+    build:
+      context: .
+      dockerfile: Dockerfile.laravel
+    container_name: wablast_laravel
+    restart: unless-stopped
+    environment:
+      APP_NAME: ${APP_NAME:-waBlast}
+      APP_ENV: ${APP_ENV:-production}
+      APP_DEBUG: ${APP_DEBUG:-false}
+      APP_URL: ${APP_URL:-http://localhost}
+      APP_KEY: ${APP_KEY}
+      LOG_CHANNEL: ${LOG_CHANNEL:-stack}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      
+      DB_CONNECTION: mysql
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_DATABASE: ${DB_DATABASE:-sikmasyita}
+      DB_USERNAME: ${DB_USERNAME:-client}
+      DB_PASSWORD: ${DB_PASSWORD:-Masyita@123}
+      
+      BROADCAST_DRIVER: ${BROADCAST_DRIVER:-log}
+      CACHE_DRIVER: ${CACHE_DRIVER:-file}
+      QUEUE_CONNECTION: ${QUEUE_CONNECTION:-database}
+      QUEUE_DRIVER: ${QUEUE_DRIVER:-database}
+      SESSION_DRIVER: ${SESSION_DRIVER:-file}
+      SESSION_LIFETIME: ${SESSION_LIFETIME:-120}
+      
+      BAILEYS_API_URL: http://baileys:3000
+      URL_WA_SERVER: http://baileys:3000
+      WA_RETRY_ATTEMPTS: ${WA_RETRY_ATTEMPTS:-3}
+      WA_RETRY_DELAY: ${WA_RETRY_DELAY:-60}
+      WA_TIMEOUT: ${WA_TIMEOUT:-30}
+      
+      REDIS_HOST: redis
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      REDIS_PORT: 6379
+      
+      MAIL_MAILER: ${MAIL_MAILER:-smtp}
+      MAIL_HOST: ${MAIL_HOST:-mailhog}
+      MAIL_PORT: ${MAIL_PORT:-1025}
+    working_dir: /var/www
+    volumes:
+      - ./:/var/www
+      - ./storage:/var/www/storage
+      - ./bootstrap/cache:/var/www/bootstrap/cache
+    networks:
+      - wablast_network
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    expose:
+      - "9000"
+
+  # Node.js Baileys Service
+  baileys:
+    build:
+      context: .
+      dockerfile: Dockerfile.baileys
+    container_name: wablast_baileys
+    restart: unless-stopped
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+      PORT: 3000
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USER: ${DB_USERNAME:-client}
+      DB_PASSWORD: ${DB_PASSWORD:-Masyita@123}
+      DB_NAME: ${DB_DATABASE:-sikmasyita}
+      LARAVEL_SERVER_URL: http://laravel:80
+      WHATSAPP_STORE_PATH: ./sessions
+      MAX_RECONNECT_RETRIES: ${MAX_RECONNECT_RETRIES:-5}
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./backend/sessions:/app/sessions
+      - ./backend:/app
+    networks:
+      - wablast_network
+    depends_on:
+      - mysql
+    expose:
+      - "3000"
+
+  # Nginx Web Server
+  nginx:
+    image: nginx:alpine
+    container_name: wablast_nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./:/var/www
+      - ./public:/var/www/public
+      - ./docker/nginx/conf.d:/etc/nginx/conf.d
+      - ./docker/nginx/ssl:/etc/nginx/ssl
+    networks:
+      - wablast_network
+    depends_on:
+      - laravel
+    expose:
+      - "80"
+      - "443"
+
+  # Redis Cache Service
+  redis:
+    image: redis:7-alpine
+    container_name: wablast_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - wablast_network
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      timeout: 20s
+      retries: 10
+
+  # Mailhog Service (for email testing)
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: wablast_mailhog
+    restart: unless-stopped
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    networks:
+      - wablast_network
+
+volumes:
+  mysql_data:
+  redis_data:
+
+networks:
+  wablast_network:
+    driver: bridge

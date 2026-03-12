@@ -1,0 +1,72 @@
+# Stage 1: Build stage
+FROM php:8.1-fpm AS builder
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    libpng-dev \
+    libjpeg-dev \
+    libfreetype6-dev \
+    libzip-dev \
+    zip \
+    unzip \
+    git \
+    curl \
+    && docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install -j$(nproc) gd zip pdo pdo_mysql \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Composer
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+
+WORKDIR /var/www
+
+# Copy composer files
+COPY composer.json composer.lock ./
+
+# Install PHP dependencies
+RUN composer install --no-dev --optimize-autoloader --no-scripts
+
+# Stage 2: Runtime stage
+FROM php:8.1-fpm
+
+# Install runtime dependencies
+RUN apt-get update && apt-get install -y \
+    libpng6 \
+    libjpeg62-turbo \
+    libfreetype6 \
+    libzip4 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install PHP extensions
+RUN docker-php-ext-install -j$(nproc) gd zip pdo pdo_mysql
+
+# Configure PHP
+COPY docker/php/conf.d/laravel.ini /usr/local/etc/php/conf.d/laravel.ini
+
+# Copy application
+COPY . /var/www
+
+# Copy vendor and node_modules from builder
+COPY --from=builder /var/www/vendor /var/www/vendor
+
+# Create necessary directories
+RUN mkdir -p /var/www/storage/logs \
+    && mkdir -p /var/www/storage/app \
+    && mkdir -p /var/www/bootstrap/cache
+
+# Set permissions
+RUN chown -R www-data:www-data /var/www \
+    && chmod -R 755 /var/www/storage \
+    && chmod -R 755 /var/www/bootstrap/cache
+
+# Copy entrypoint script
+COPY docker/php/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+WORKDIR /var/www
+
+EXPOSE 9000
+
+ENTRYPOINT ["/entrypoint.sh"]
+CMD ["php-fpm"]

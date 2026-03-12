@@ -158,7 +158,7 @@
                                             </p>
                                             @if(!empty($template->placeholder_variables))
                                                 <small class="text-info">
-                                                    Variabel: {{ implode(', ', $template->placeholder_variables) }}
+                                                    Variabel: {{ implode(', ', is_array($template->placeholder_variables) ? array_map('strval', $template->placeholder_variables) : []) }}
                                                 </small>
                                             @endif
                                         </div>
